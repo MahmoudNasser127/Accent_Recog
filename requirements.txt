@@ -6,4 +6,4 @@ transformers
 torch
 torchaudio
 numpy
-ffmpeg-python
+imageio[ffmpeg]
