@@ -4,9 +4,11 @@ from moviepy.editor import VideoFileClip
 import soundfile as sf
 from transformers import Wav2Vec2Processor, Wav2Vec2ForSequenceClassification
 from transformers import Wav2Vec2FeatureExtractor, Wav2Vec2ForSequenceClassification
-
+import numpy as np
+from collections import Counter
 import torch
 import os
+import ffmpeg
 
 @st.cache_resource(show_spinner=False)
 def load_models():
@@ -21,12 +23,16 @@ def download_video(url, filename="video.mp4"):
         f.write(r.content)
 
 def extract_audio(video_path, audio_path="audio.wav"):
-    video = VideoFileClip(video_path)
-    if video.audio is None:
-        raise ValueError("No audio stream found in the video.")
-    video.audio.write_audiofile(audio_path)
-import numpy as np
-from collections import Counter
+    try:
+        (
+            ffmpeg
+            .input(video_path)
+            .output(audio_path, format='wav', acodec='pcm_s16le', ac=1, ar='16000')  # mono, 16kHz
+            .overwrite_output()
+            .run(quiet=True)
+        )
+    except ffmpeg.Error as e:
+        raise ValueError(f"Failed to extract audio: {e}")
 
 def split_audio(audio_input, sample_rate, chunk_duration=30):
     """
