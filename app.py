@@ -1,6 +1,5 @@
 import streamlit as st
 import requests
-from moviepy.editor import VideoFileClip
 import soundfile as sf
 from transformers import Wav2Vec2Processor, Wav2Vec2ForSequenceClassification
 from transformers import Wav2Vec2FeatureExtractor, Wav2Vec2ForSequenceClassification
