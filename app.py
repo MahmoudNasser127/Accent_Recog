@@ -7,8 +7,8 @@ import numpy as np
 from collections import Counter
 import torch
 import os
-import ffmpeg
-
+import imageio_ffmpeg
+import subprocess
 @st.cache_resource(show_spinner=False)
 def load_models():
     model_name = "ylacombe/accent-classifier"
@@ -20,18 +20,20 @@ def download_video(url, filename="video.mp4"):
     r = requests.get(url)
     with open(filename, "wb") as f:
         f.write(r.content)
-
 def extract_audio(video_path, audio_path="audio.wav"):
-    try:
-        (
-            ffmpeg
-            .input(video_path)
-            .output(audio_path, format='wav', acodec='pcm_s16le', ac=1, ar='16000')  # mono, 16kHz
-            .overwrite_output()
-            .run(quiet=True)
-        )
-    except ffmpeg.Error as e:
-        raise ValueError(f"Failed to extract audio: {e}")
+    ffmpeg_bin = imageio_ffmpeg.get_ffmpeg_exe()
+    command = [
+        ffmpeg_bin,
+        "-i", video_path,
+        "-ac", "1",
+        "-ar", "16000",
+        "-vn",
+        audio_path,
+        "-y",
+    ]
+    result = subprocess.run(command, capture_output=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"ffmpeg error: {result.stderr.decode()}")
 
 def split_audio(audio_input, sample_rate, chunk_duration=30):
     """
