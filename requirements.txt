@@ -1,5 +1,7 @@
 streamlit
+requests
+moviepy
+soundfile
 transformers
 torch
-soundfile
-requests
+torchaudio
