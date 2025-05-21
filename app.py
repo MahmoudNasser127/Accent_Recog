@@ -116,6 +116,9 @@ if st.button("Analyze") and video_url:
 
         audio_bytes = open(audio_file, "rb").read()
         st.audio(audio_bytes, format='audio/wav')
+        os.remove(video_file)
+        os.remove(audio_file)
 
     except Exception as e:
         st.error(f"Error: {e}")
+    
