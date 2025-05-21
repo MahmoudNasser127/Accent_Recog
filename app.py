@@ -148,6 +148,12 @@ if st.button("Analyze") and video_url:
 
         with open(audio_file, "rb") as f:
             st.audio(f.read(), format='audio/wav')
+        summary = (
+            f"We looked at different parts of the audio to figure out the speaker’s accent. "
+            f"The model thinks it’s **{accent}**, and it’s about **{confidence*100:.2f}%** sure about that. "
+            "Keep in mind, this isn’t perfect, but it gives a good idea of the speaker’s English accent."
+            )
+st.write(summary)
 
     except Exception as e:
         st.error(f"Error: {e}")
