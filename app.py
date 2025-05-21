@@ -111,7 +111,7 @@ def predict_accent(audio_path, feature_extractor, model):
 
         predicted_index = torch.argmax(probabilities).item()
         predicted_id = selected_ids[predicted_index]
-        predicted_label = id2label[str(predicted_id)]
+        predicted_label = id2label[predicted_id]  # Remove str()
         confidence = probabilities[0][predicted_index].item()
 
         results.append((predicted_label, confidence))
