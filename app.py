@@ -48,7 +48,7 @@ def extract_audio(video_path, audio_path="audio.wav"):
         ffmpeg_bin,
         "-i", video_path,
         "-ac", "1",
-        "-ar", "16000",
+        "-ar", "8000",
         "-vn",
         audio_path,
         "-y",
