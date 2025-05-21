@@ -29,16 +29,24 @@ def load_models() -> Tuple[Wav2Vec2FeatureExtractor, AutoModelForAudioClassifica
     return feature_extractor, model
 
 
-def download_video(url, filename="video.mp4"):
-    import yt_dlp
-    ydl_opts = {
-        'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4',
-        'outtmpl': filename,
-        'quiet': True,
-        'merge_output_format': 'mp4'
-    }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
+def download_video(url: str, filename: str = VIDEO_FILENAME) -> str:
+    """Download video from YouTube or direct URL."""
+    if "youtube.com" in url or "youtu.be" in url:
+        ydl_opts = {
+            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4',
+            'outtmpl': filename,
+            'quiet': True,
+            'merge_output_format': 'mp4'
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+    else:
+        r = requests.get(url, stream=True)
+        r.raise_for_status()
+        with open(filename, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
     return filename
 
 
