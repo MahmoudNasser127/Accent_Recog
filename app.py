@@ -14,18 +14,32 @@ from transformers import Wav2Vec2FeatureExtractor
 
 @st.cache_resource(show_spinner=False)
 def load_models():
-    model_name = "ylacombe/accent-classifier"
+    model_name = r"F:\Courses\model"  # مسار الموديل المحلي
     feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(model_name)
     model = AutoModelForAudioClassification.from_pretrained(model_name)
     return feature_extractor, model
 
-
-
 def download_video(url, filename="video.mp4"):
-    r = requests.get(url)
-    with open(filename, "wb") as f:
-        f.write(r.content)
+    if "youtube.com" in url or "youtu.be" in url:
+        import yt_dlp
+
+        ydl_opts = {
+            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4',
+            'outtmpl': filename,
+            'quiet': True,
+            'merge_output_format': 'mp4'
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+    else:
+        r = requests.get(url, stream=True)
+        with open(filename, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
     return filename
+
 
 def extract_audio(video_path, audio_path="audio.wav"):
     ffmpeg_bin = imageio_ffmpeg.get_ffmpeg_exe()
