@@ -1,9 +1,7 @@
 streamlit
 requests
-moviepy
 soundfile
 transformers
 torch
-torchaudio
 numpy
-imageio[ffmpeg]
+imageio-ffmpeg
