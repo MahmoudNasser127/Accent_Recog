@@ -65,8 +65,8 @@ def split_audio(audio_input, sample_rate, chunk_duration=30):
         end = min(start + chunk_samples, total_samples)
         chunks.append(audio_input[start:end])
     return chunks
+import time
 
-dimport time
 
 def predict_accent(audio_path, feature_extractor, model):
     start_time = time.time()
