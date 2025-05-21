@@ -66,17 +66,30 @@ def split_audio(audio_input, sample_rate, chunk_duration=30):
         chunks.append(audio_input[start:end])
     return chunks
 
+dimport time
+
 def predict_accent(audio_path, feature_extractor, model):
+    start_time = time.time()
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+
     audio_input, sample_rate = sf.read(audio_path)
     if len(audio_input.shape) > 1:
         audio_input = audio_input.mean(axis=1)
     if audio_input.dtype != 'float32':
         audio_input = audio_input.astype('float32')
 
-    chunks = split_audio(audio_input, sample_rate, chunk_duration=30)
+    # قلل المدة لـ 10 ثواني فقط
+    chunks = split_audio(audio_input, sample_rate, chunk_duration=10)
+
+    # استخدم أول 3 مقاطع فقط لتحليل أسرع
+    chunks = chunks[:3]
+
     results = []
-    for chunk in chunks:
+    for i, chunk in enumerate(chunks):
         inputs = feature_extractor(chunk, sampling_rate=sample_rate, return_tensors="pt", padding=True)
+        inputs = {k: v.to(device) for k, v in inputs.items()}
         with torch.no_grad():
             logits = model(**inputs).logits
         probabilities = torch.nn.functional.softmax(logits, dim=-1)
@@ -89,8 +102,10 @@ def predict_accent(audio_path, feature_extractor, model):
     most_common_label, _ = Counter(labels).most_common(1)[0]
     avg_confidence = np.mean([c for l, c in results if l == most_common_label])
 
-    return most_common_label, avg_confidence
+    end_time = time.time()
+    st.write(f"⏱️ Prediction took: {end_time - start_time:.2f} seconds")
 
+    return most_common_label, avg_confidence
 
 # واجهة Streamlit
 st.title("Accent Analyzer")
