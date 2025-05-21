@@ -96,5 +96,8 @@ Standard Loom share links are encrypted and **do not allow direct download** or 
 ## 📬 Contact
 
 Feel free to reach out for questions or suggestions. Pull requests are welcome!
-
+👤 Contact
+Mahmoud Nasser
+📧 Email: 44mahmoudnasser@gmail.com
+🔗 LinkedIn: linkedin.com/in/44mahmoudnasser
 ---
