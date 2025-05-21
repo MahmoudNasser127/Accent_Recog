@@ -72,56 +72,30 @@ import time
 import random
 
 def predict_accent(audio_path, feature_extractor, model):
-    start_time = time.time()
-
-    selected_ids = [0, 1, 7, 13, 17, 25]  # American, Australian, English, Indian, Latin American, South African
-
-    id2label = model.config.id2label
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
-
     audio_input, sample_rate = sf.read(audio_path)
     if len(audio_input.shape) > 1:
         audio_input = audio_input.mean(axis=1)
     if audio_input.dtype != 'float32':
         audio_input = audio_input.astype('float32')
 
-    chunks = split_audio(audio_input, sample_rate, chunk_duration=10)
-
-    # Randomly select 3 chunks if possible
-    if len(chunks) >= 3:
-        chunks = random.sample(chunks, 3)
-    elif len(chunks) > 0:
-        chunks = chunks  # Use all available chunks if fewer than 3
-    else:
-        raise ValueError("Audio too short to extract any valid chunks.")
-
+    chunks = split_audio(audio_input, sample_rate, chunk_duration=30)
     results = []
     for chunk in chunks:
         inputs = feature_extractor(chunk, sampling_rate=sample_rate, return_tensors="pt", padding=True)
-        inputs = {k: v.to(device) for k, v in inputs.items()}
         with torch.no_grad():
             logits = model(**inputs).logits
-
-        # Filter only selected IDs
-        logits_filtered = logits[:, selected_ids]
-        probabilities = torch.nn.functional.softmax(logits_filtered, dim=-1)
-
-        predicted_index = torch.argmax(probabilities).item()
-        predicted_id = selected_ids[predicted_index]
-        predicted_label = id2label[str(predicted_id)]
-        confidence = probabilities[0][predicted_index].item()
-
+        probabilities = torch.nn.functional.softmax(logits, dim=-1)
+        predicted_id = torch.argmax(probabilities).item()
+        predicted_label = model.config.id2label[predicted_id]
+        confidence = probabilities[0][predicted_id].item()
         results.append((predicted_label, confidence))
 
     labels = [r[0] for r in results]
     most_common_label, _ = Counter(labels).most_common(1)[0]
     avg_confidence = np.mean([c for l, c in results if l == most_common_label])
 
-    end_time = time.time()
-    st.write(f"⏱️ Prediction took: {end_time - start_time:.2f} seconds")
-
     return most_common_label, avg_confidence
+
 
 
 # واجهة Streamlit
