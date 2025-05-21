@@ -1,40 +1,48 @@
-
-import streamlit as st
+import os
+import subprocess
+import time
+from collections import Counter
+from typing import Tuple, List
+import numpy as np
 import requests
 import soundfile as sf
-from transformers import AutoProcessor, AutoModelForAudioClassification
-import numpy as np
-from collections import Counter
+import streamlit as st
 import torch
+import yt_dlp
 import imageio_ffmpeg
-import subprocess
-import os
-from transformers import Wav2Vec2FeatureExtractor
+from transformers import AutoModelForAudioClassification, Wav2Vec2FeatureExtractor
+import random
 
-# تحميل الموديل والمعالج من Hugging Face
+# Constants
+MODEL_NAME = "ylacombe/accent-classifier"
+VIDEO_FILENAME = "video.mp4"
+AUDIO_FILENAME = "audio.wav"
+CHUNK_DURATION_SECONDS = 10
+SELECTED_IDS = [0, 1, 7, 13, 17, 25]  # American, Australian, English, Indian, Latin American, South African
+
 
 @st.cache_resource(show_spinner=False)
-def load_models():
-    model_name = "ylacombe/accent-classifier"
-    feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(model_name)
-    model = AutoModelForAudioClassification.from_pretrained(model_name)
+def load_models() -> Tuple[Wav2Vec2FeatureExtractor, AutoModelForAudioClassification]:
+    """Load the feature extractor and model from Hugging Face."""
+    feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(MODEL_NAME)
+    model = AutoModelForAudioClassification.from_pretrained(MODEL_NAME)
     return feature_extractor, model
 
-def download_video(url, filename="video.mp4"):
-    if "youtube.com" in url or "youtu.be" in url:
-        import yt_dlp
 
+def download_video(url: str, filename: str = VIDEO_FILENAME) -> str:
+    """Download video from YouTube or direct URL."""
+    if "youtube.com" in url or "youtu.be" in url:
         ydl_opts = {
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4',
             'outtmpl': filename,
             'quiet': True,
             'merge_output_format': 'mp4'
         }
-
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
     else:
         r = requests.get(url, stream=True)
+        r.raise_for_status()
         with open(filename, "wb") as f:
             for chunk in r.iter_content(chunk_size=8192):
                 if chunk:
@@ -42,7 +50,8 @@ def download_video(url, filename="video.mp4"):
     return filename
 
 
-def extract_audio(video_path, audio_path="audio.wav"):
+def extract_audio(video_path: str, audio_path: str = AUDIO_FILENAME) -> str:
+    """Extract mono, 16kHz audio from video using ffmpeg."""
     ffmpeg_bin = imageio_ffmpeg.get_ffmpeg_exe()
     command = [
         ffmpeg_bin,
@@ -58,44 +67,33 @@ def extract_audio(video_path, audio_path="audio.wav"):
         raise RuntimeError(f"ffmpeg error: {result.stderr.decode()}")
     return audio_path
 
-def split_audio(audio_input, sample_rate, chunk_duration=30):
+
+def split_audio(audio_input: np.ndarray, sample_rate: int, chunk_duration: int = CHUNK_DURATION_SECONDS) -> List[np.ndarray]:
+    """Split audio into chunks of chunk_duration seconds."""
     total_samples = len(audio_input)
     chunk_samples = int(chunk_duration * sample_rate)
-    chunks = []
-    for start in range(0, total_samples, chunk_samples):
-        end = min(start + chunk_samples, total_samples)
-        chunks.append(audio_input[start:end])
+    chunks = [audio_input[start:start + chunk_samples] for start in range(0, total_samples, chunk_samples)]
     return chunks
-import time
 
 
-import random
-
-import random
-
-def predict_accent(audio_path, feature_extractor, model):
+def predict_accent(audio_path: str, feature_extractor, model) -> Tuple[str, float]:
+    """Predict accent from audio file."""
     start_time = time.time()
-
-    selected_ids = [0, 1, 7, 13, 17, 25]  # American, Australian, English, Indian, Latin American, South African
 
     id2label = model.config.id2label
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
     audio_input, sample_rate = sf.read(audio_path)
-    if len(audio_input.shape) > 1:
+    if audio_input.ndim > 1:
         audio_input = audio_input.mean(axis=1)
-    if audio_input.dtype != 'float32':
-        audio_input = audio_input.astype('float32')
+    audio_input = audio_input.astype('float32')
 
-    chunks = split_audio(audio_input, sample_rate, chunk_duration=10)
+    chunks = split_audio(audio_input, sample_rate)
 
-    # Randomly select 3 chunks if possible
     if len(chunks) >= 3:
         chunks = random.sample(chunks, 3)
-    elif len(chunks) > 0:
-        chunks = chunks  # Use all available chunks if fewer than 3
-    else:
+    elif not chunks:
         raise ValueError("Audio too short to extract any valid Accent.")
 
     results = []
@@ -105,13 +103,12 @@ def predict_accent(audio_path, feature_extractor, model):
         with torch.no_grad():
             logits = model(**inputs).logits
 
-        # Filter only selected IDs
-        logits_filtered = logits[:, selected_ids]
+        logits_filtered = logits[:, SELECTED_IDS]
         probabilities = torch.nn.functional.softmax(logits_filtered, dim=-1)
 
         predicted_index = torch.argmax(probabilities).item()
-        predicted_id = selected_ids[predicted_index]
-        predicted_label = id2label[predicted_id]  # Remove str()
+        predicted_id = SELECTED_IDS[predicted_index]
+        predicted_label = id2label[predicted_id]
         confidence = probabilities[0][predicted_index].item()
 
         results.append((predicted_label, confidence))
@@ -125,7 +122,8 @@ def predict_accent(audio_path, feature_extractor, model):
 
     return most_common_label, avg_confidence
 
-# واجهة Streamlit
+
+# Streamlit UI
 st.title("Accent Analyzer")
 
 video_url = st.text_input("Enter video URL (direct mp4 link):")
@@ -133,25 +131,27 @@ video_url = st.text_input("Enter video URL (direct mp4 link):")
 if st.button("Analyze") and video_url:
     try:
         st.info("Downloading video...")
-        video_file = download_video(video_url, "video.mp4")
+        video_file = download_video(video_url, VIDEO_FILENAME)
 
         st.info("Extracting audio...")
-        audio_file = extract_audio(video_file, "audio.wav")
+        audio_file = extract_audio(video_file, AUDIO_FILENAME)
 
         st.info("Loading model...")
         processor, model = load_models()
 
         st.info("Analyzing accent...")
         accent, confidence = predict_accent(audio_file, processor, model)
+
         st.success("Analysis Complete!")
         st.write(f"**Predicted Accent:** {accent}")
-        st.write(f"**Confidence:** {confidence*100:.2f}%")
+        st.write(f"**Confidence:** {confidence * 100:.2f}%")
 
-        audio_bytes = open(audio_file, "rb").read()
-        st.audio(audio_bytes, format='audio/wav')
-        os.remove(video_file)
-        os.remove(audio_file)
+        with open(audio_file, "rb") as f:
+            st.audio(f.read(), format='audio/wav')
 
     except Exception as e:
         st.error(f"Error: {e}")
-    
+    finally:
+        for file in [VIDEO_FILENAME, AUDIO_FILENAME]:
+            if os.path.exists(file):
+                os.remove(file)
