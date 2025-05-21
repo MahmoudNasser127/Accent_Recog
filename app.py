@@ -153,7 +153,7 @@ if st.button("Analyze") and video_url:
             f"The model thinks it’s **{accent}**, and it’s about **{confidence*100:.2f}%** sure about that. "
             "Keep in mind, this isn’t perfect, but it gives a good idea of the speaker’s English accent."
             )
-st.write(summary)
+        st.write(summary)
 
     except Exception as e:
         st.error(f"Error: {e}")
