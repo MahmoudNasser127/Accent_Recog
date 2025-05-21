@@ -18,7 +18,7 @@ MODEL_NAME = "ylacombe/accent-classifier"
 VIDEO_FILENAME = "video.mp4"
 AUDIO_FILENAME = "audio.wav"
 CHUNK_DURATION_SECONDS = 10
-SELECTED_IDS = [0, 1, 7, 13, 14, 17, 22, 25]  # American, Australian, English, Indian, Latin American, South African
+SELECTED_IDS = [0, 1, 7, 13, 17, 22, 25]  # American, Australian, English, Indian, Latin American, South African
 
 
 @st.cache_resource(show_spinner=False)
