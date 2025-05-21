@@ -15,7 +15,7 @@ from transformers import Wav2Vec2FeatureExtractor
 
 @st.cache_resource(show_spinner=False)
 def load_models():
-    model_name = "ylacombe/accent-classifier"  # مسار الموديل المحلي
+    model_name = "dima806/multiple_accent_classification"
     feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(model_name)
     model = AutoModelForAudioClassification.from_pretrained(model_name)
     return feature_extractor, model
