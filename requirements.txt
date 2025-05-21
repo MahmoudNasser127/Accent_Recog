@@ -6,3 +6,4 @@ torch
 numpy
 imageio-ffmpeg
 yt_dlp
+time
